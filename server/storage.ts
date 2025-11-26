@@ -22,7 +22,7 @@ export class MemStorage implements IStorage {
     this.photoStrips = new Map();
     this.sharedLinks = new Map();
     this.currentId = 1;
-    this.visitorCount = 0;
+    this.visitorCount = 300000;
     this.visitorFilePath = path.resolve(process.cwd(), "visitor-count.json");
     // initialize visitor count from file if present
     void this.loadVisitorCount();
@@ -36,7 +36,16 @@ export class MemStorage implements IStorage {
         this.visitorCount = parsed.count;
       }
     } catch (e) {
-      this.visitorCount = 0;
+      this.visitorCount = 300000;
+      await this.persistVisitorCount();
+    }
+  }
+
+  private async persistVisitorCount(): Promise<void> {
+    try {
+      await fs.writeFile(this.visitorFilePath, JSON.stringify({ count: this.visitorCount }), "utf-8");
+    } catch (error) {
+      console.error("Failed to persist visitor count:", error);
     }
   }
 
@@ -46,11 +55,7 @@ export class MemStorage implements IStorage {
 
   async incrementVisitorCount(): Promise<number> {
     this.visitorCount = (this.visitorCount || 0) + 1;
-    try {
-      await fs.writeFile(this.visitorFilePath, JSON.stringify({ count: this.visitorCount }), "utf-8");
-    } catch (e) {
-      console.error("Failed to persist visitor count:", e);
-    }
+    await this.persistVisitorCount();
     return this.visitorCount;
   }
 

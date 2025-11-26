@@ -19,6 +19,7 @@ interface PhotoStripProps {
   showShareButton?: boolean;
   onShare?: () => void;
   onSaveToGallery?: () => void;
+  isShareLoading?: boolean;
 }
 
 export const PhotoStrip: React.FC<PhotoStripProps> = ({
@@ -35,6 +36,7 @@ export const PhotoStrip: React.FC<PhotoStripProps> = ({
   showShareButton = false,
   onShare,
   onSaveToGallery,
+  isShareLoading = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
@@ -399,9 +401,14 @@ export const PhotoStrip: React.FC<PhotoStripProps> = ({
           )}
 
           {showShareButton && photos.length > 0 && (
-            <Button onClick={handleShare} variant="outline" className="px-4 py-2">
+            <Button
+              onClick={handleShare}
+              variant="outline"
+              className="px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isShareLoading}
+            >
               <Share2 className="h-4 w-4" />
-              <span className="ml-2">Share</span>
+              <span className="ml-2">{isShareLoading ? 'Generating...' : 'Share'}</span>
             </Button>
           )}
         </div>

@@ -17,6 +17,29 @@ import { useToast } from "@/hooks/use-toast";
 export default function Landing() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  useEffect(() => {
+    let mounted = true;
+
+    const incrementVisitorCount = async () => {
+      try {
+        const res = await fetch("/api/visitors/increment", { method: "POST" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!mounted) return;
+        if (typeof window !== "undefined" && typeof data?.count === "number") {
+          window.dispatchEvent(new CustomEvent("visitor-count-updated", { detail: { count: data.count } }));
+        }
+      } catch (error) {
+        console.error("Failed to update visitor count", error);
+      }
+    };
+
+    incrementVisitorCount();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">

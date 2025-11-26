@@ -24,66 +24,41 @@ export function Header() {
         const data = await res.json();
         return typeof data?.count === 'number' ? data.count : null;
       } catch (e) {
-        return null;
-      }
-    };
-
-    const incrementVisitor = async () => {
-      try {
-        const res = await fetch('/api/visitors/increment', { method: 'POST' });
-        if (res.ok) {
-          const data = await res.json();
-          return typeof data?.count === 'number' ? data.count : null;
-        }
-        return null;
-      } catch (e) {
-        return null;
-      }
-    };
-
-    const run = async () => {
-      try {
-        const hasVisited = typeof window !== 'undefined' && sessionStorage.getItem('robooth_visited');
-        if (!hasVisited) {
-          // First visit: increment counter
-          const count = await incrementVisitor();
-          if (mounted && count !== null) {
-            setVisitors(count);
-          }
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('robooth_visited', '1');
-          }
-        } else {
-          // Not first visit: just fetch current count
-          const current = await fetchCurrent();
-          if (mounted && current !== null) {
-            setVisitors(current);
-          }
-        }
-      } catch (e) {
         console.error('Visitor count fetch failed', e);
+        return null;
       }
     };
 
-    // Initial fetch
-    run();
-
-    // Setup polling to sync visitor count every 5 seconds
-    // This works on both local development and Netlify serverless
-    pollInterval = setInterval(async () => {
-      try {
-        const current = await fetchCurrent();
-        if (mounted && current !== null) {
-          setVisitors(current);
-        }
-      } catch (e) {
-        // Silently ignore polling errors
+    const syncVisitorCount = async () => {
+      const current = await fetchCurrent();
+      if (mounted && current !== null) {
+        setVisitors(current);
       }
+    };
+
+    syncVisitorCount();
+
+    pollInterval = setInterval(() => {
+      void syncVisitorCount();
     }, 5000);
+
+    const handleVisitorEvent = (event: Event) => {
+      const detail = (event as CustomEvent<{ count?: number }>).detail;
+      if (detail && typeof detail.count === 'number') {
+        setVisitors(detail.count);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('visitor-count-updated', handleVisitorEvent);
+    }
 
     return () => {
       mounted = false;
       if (pollInterval) clearInterval(pollInterval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('visitor-count-updated', handleVisitorEvent);
+      }
     };
   }, []);
 

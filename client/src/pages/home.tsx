@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import { PhotoBoothCamera } from "@/components/photo-booth/camera";
 import { Countdown } from "@/components/photo-booth/countdown";
@@ -56,6 +56,15 @@ export default function Home() {
   const [currentStep, setCurrentStep] = useState(0);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
+  const autoCaptureTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isAutoCapturing, setIsAutoCapturing] = useState(false);
+  const [isShareGenerating, setIsShareGenerating] = useState(false);
+  const clearAutoCaptureTimer = () => {
+    if (autoCaptureTimer.current) {
+      clearTimeout(autoCaptureTimer.current);
+      autoCaptureTimer.current = null;
+    }
+  };
 
   // Persist dark mode preference
   useEffect(() => {
@@ -67,6 +76,12 @@ export default function Home() {
       document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
+
+  useEffect(() => {
+    return () => {
+      clearAutoCaptureTimer();
+    };
+  }, []);
 
   const handleCapture = (photo: string) => {
     if (recaptureIndex !== null) {
@@ -84,16 +99,19 @@ export default function Home() {
         duration: 2000,
       });
     } else {
-      // Add new photo
+      const nextPhotoCount = photos.length + 1;
       setPhotos((prev) => [...prev, photo]);
       setIsCountingDown(false);
+      clearAutoCaptureTimer();
 
-      // If auto capture is in progress and we haven't reached 4 photos yet
-      if (isCountingDown && photos.length < 3) {
-        // Wait a moment before starting the next countdown
-        setTimeout(() => {
-          setIsCountingDown(true);
-        }, 1500);
+      if (isAutoCapturing) {
+        if (nextPhotoCount < 4) {
+          autoCaptureTimer.current = setTimeout(() => {
+            setIsCountingDown(true);
+          }, 1500);
+        } else {
+          setIsAutoCapturing(false);
+        }
       }
     }
   };
@@ -109,13 +127,20 @@ export default function Home() {
       return;
     }
     // Clear existing photos when starting a new sequence
+    clearAutoCaptureTimer();
     setPhotos([]);
+    setRecaptureIndex(null);
+    setIsAutoCapturing(true);
     // Start the countdown for the first photo
     setIsCountingDown(true);
   };
 
   const handleClear = () => {
     setPhotos([]);
+    setRecaptureIndex(null);
+    setIsCountingDown(false);
+    setIsAutoCapturing(false);
+    clearAutoCaptureTimer();
   };
 
   const [recaptureIndex, setRecaptureIndex] = useState<number | null>(null);
@@ -140,6 +165,7 @@ export default function Home() {
   };
 
   const handleShare = async () => {
+    if (isShareGenerating) return;
     if (!userId) {
       toast({
         title: "Sign in required",
@@ -148,6 +174,7 @@ export default function Home() {
       });
       return;
     }
+    setIsShareGenerating(true);
 
     try {
       // First, save the photo strip
@@ -199,6 +226,8 @@ export default function Home() {
         description: "Failed to create share link",
         variant: "destructive",
       });
+    } finally {
+      setIsShareGenerating(false);
     }
   };
 
@@ -338,8 +367,8 @@ export default function Home() {
                             handleStartPhotoSequence();
                           }
                         }}
-                        disabled={isCountingDown}
-                        className="flex items-center gap-2 flex-1 sm:flex-none text-sm sm:text-base bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                    disabled={isCountingDown || isAutoCapturing}
+                    className="flex items-center gap-2 flex-1 sm:flex-none text-sm sm:text-base bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Camera className="h-4 w-4" />
                         <span className="hidden sm:inline">{recaptureIndex !== null ? `Recapture Photo ${recaptureIndex + 1}` : 'Auto Capture'}</span>
@@ -647,6 +676,7 @@ export default function Home() {
                     dateColor={dateColor}
                     darkMode={darkMode}
                     showShareButton={true}
+                    isShareLoading={isShareGenerating}
                     onShare={handleShare}
                     onSaveToGallery={saveToGallery}
                   />

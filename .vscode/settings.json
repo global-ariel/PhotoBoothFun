@@ -1,0 +1,9 @@
+// ÆtherLight Extension Configuration
+// IMPORTANT: Claude Code should read .vscode/aetherlight.md for operational structure
+// Sprint tasks: sprints/ACTIVE_SPRINT.toml (each task includes 'prompt' field with full context)
+{
+  "aetherlight.documentation": ".vscode/aetherlight.md",
+  "aetherlight.sprintFile": "sprints/ACTIVE_SPRINT.toml",
+  "aetherlight.enforcementEnabled": true,
+  "aetherlight.lastSyncedVersion": "0.18.4"
+}
